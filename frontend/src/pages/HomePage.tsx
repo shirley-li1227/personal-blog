@@ -84,6 +84,7 @@ function HomePage() {
     })
     return ['全部', ...Array.from(names)]
   }, [posts])
+  const hasPosts = total > 0
 
   function updateParams(next: Record<string, string | null>) {
     const params = new URLSearchParams(searchParams)
@@ -138,24 +139,27 @@ function HomePage() {
           +写文章
         </Link>
       </div>
-      <div className="category-tabs">
-        {categoryTabs.map((tab) => {
-          const value = tab === '全部' ? '' : tab
-          const isActive = (category || '') === value
-          return (
-            <button
-              key={tab}
-              type="button"
-              className={isActive ? 'tab active' : 'tab'}
-              onClick={() => updateParams({ category: value, page: '1' })}
-            >
-              {tab}
-            </button>
-          )
-        })}
-      </div>
+      {hasPosts && (
+        <div className="category-tabs">
+          {categoryTabs.map((tab) => {
+            const value = tab === '全部' ? '' : tab
+            const isActive = (category || '') === value
+            return (
+              <button
+                key={tab}
+                type="button"
+                className={isActive ? 'tab active' : 'tab'}
+                onClick={() => updateParams({ category: value, page: '1' })}
+              >
+                {tab}
+              </button>
+            )
+          })}
+        </div>
+      )}
       {loading && <p>加载中...</p>}
       {error && <p className="error">{error}</p>}
+      {!loading && !error && !hasPosts && <p>暂无文章</p>}
       <ul className="card-list">
         {posts.map((post) => (
           <li key={post.id} className="card">
@@ -204,25 +208,27 @@ function HomePage() {
           </li>
         ))}
       </ul>
-      <div className="pagination">
-        <button
-          type="button"
-          disabled={page <= 1}
-          onClick={() => updateParams({ page: String(page - 1) })}
-        >
-          上一页
-        </button>
-        <span>
-          第 {Math.min(page, totalPages)} / {totalPages} 页（共 {total} 篇）
-        </span>
-        <button
-          type="button"
-          disabled={page >= totalPages}
-          onClick={() => updateParams({ page: String(page + 1) })}
-        >
-          下一页
-        </button>
-      </div>
+      {hasPosts && (
+        <div className="pagination">
+          <button
+            type="button"
+            disabled={page <= 1}
+            onClick={() => updateParams({ page: String(page - 1) })}
+          >
+            上一页
+          </button>
+          <span>
+            第 {Math.min(page, totalPages)} / {totalPages} 页（共 {total} 篇）
+          </span>
+          <button
+            type="button"
+            disabled={page >= totalPages}
+            onClick={() => updateParams({ page: String(page + 1) })}
+          >
+            下一页
+          </button>
+        </div>
+      )}
     </section>
   )
 }

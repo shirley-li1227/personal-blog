@@ -23,7 +23,7 @@ function validateRegisterInput({ username, email, password }) {
     return "用户名长度必须在 3-20 个字符之间";
   }
 
-  if (typeof email !== "string" || !EMAIL_REGEX.test(email)) {
+  if (email && (typeof email !== "string" || !EMAIL_REGEX.test(email))) {
     return "邮箱格式不正确";
   }
 
@@ -34,13 +34,18 @@ function validateRegisterInput({ username, email, password }) {
   return null;
 }
 
+function buildFallbackEmail(username) {
+  const safeUsername = username.replace(/[^a-zA-Z0-9._-]/g, "").slice(0, 30) || "user";
+  return `${safeUsername}_${Date.now()}@no-email.local`;
+}
+
 async function register(req, res, next) {
   try {
     const { username, email, password } = req.body || {};
     const normalizedUsername =
       typeof username === "string" ? username.trim() : username;
     const normalizedEmail =
-      typeof email === "string" ? email.trim().toLowerCase() : email;
+      typeof email === "string" ? email.trim().toLowerCase() : "";
     const validationError = validateRegisterInput({
       username: normalizedUsername,
       email: normalizedEmail,
@@ -56,15 +61,18 @@ async function register(req, res, next) {
       return res.status(409).json({ message: "用户名已存在" });
     }
 
-    const existingUserByEmail = await findUserByEmail(normalizedEmail);
-    if (existingUserByEmail) {
-      return res.status(409).json({ message: "邮箱已存在" });
+    if (normalizedEmail) {
+      const existingUserByEmail = await findUserByEmail(normalizedEmail);
+      if (existingUserByEmail) {
+        return res.status(409).json({ message: "邮箱已存在" });
+      }
     }
 
     const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
+    const emailToSave = normalizedEmail || buildFallbackEmail(normalizedUsername);
     await createUser({
       username: normalizedUsername,
-      email: normalizedEmail,
+      email: emailToSave,
       hashedPassword,
     });
 

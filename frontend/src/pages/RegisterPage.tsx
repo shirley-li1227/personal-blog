@@ -6,7 +6,6 @@ import api from '../lib/api'
 function RegisterPage() {
   const navigate = useNavigate()
   const [username, setUsername] = useState('')
-  const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
 
@@ -15,7 +14,7 @@ function RegisterPage() {
     setError('')
 
     try {
-      await api.post('/auth/register', { username, email, password })
+      await api.post('/auth/register', { username, password })
       navigate('/login')
     } catch (err: any) {
       setError(err?.response?.data?.message || '注册失败，请检查输入信息')
@@ -30,12 +29,6 @@ function RegisterPage() {
           value={username}
           onChange={(e) => setUsername(e.target.value)}
           placeholder="用户名"
-        />
-        <input
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="邮箱"
         />
         <input
           type="password"
