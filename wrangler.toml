@@ -1,0 +1,21 @@
+# Cloudflare Pages：静态站点输出 frontend/dist + Pages Functions（/api/*）
+# 文档：https://developers.cloudflare.com/pages/functions/wrangler-configuration/
+#
+# 控制台或使用 CLI：
+#   npm run pages:deploy
+#
+# 替换 REPLACE_WITH_HYPERDRIVE_ID，并配置密钥（控制台 Secrets 或 wrangler secret bulk）
+
+name = "personal-blog"
+pages_build_output_dir = "frontend/dist"
+compatibility_date = "2025-11-01"
+
+compatibility_flags = [
+  "nodejs_compat",
+  "enable_nodejs_http_modules",
+  "enable_nodejs_http_server_modules",
+]
+
+[[hyperdrive]]
+binding = "HYPERDRIVE"
+id = "REPLACE_WITH_HYPERDRIVE_ID"

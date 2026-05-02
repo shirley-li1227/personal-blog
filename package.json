@@ -7,18 +7,24 @@
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
     "db:init": "node scripts/init-db.js",
-    "test": "echo \"No tests configured\""
+    "test": "echo \"No tests configured\"",
+    "build:frontend": "npm run build --prefix frontend",
+    "pages:deploy": "npm run build:frontend && wrangler pages deploy frontend/dist --project-name=personal-blog",
+    "pages:dev": "npm run build:frontend && wrangler pages dev frontend/dist --project-name=personal-blog"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
-    "bcrypt": "^6.0.0",
+    "bcryptjs": "^3.0.2",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "jsonwebtoken": "^9.0.3",
     "mysql2": "^3.22.2"
+  },
+  "devDependencies": {
+    "wrangler": "^4.44.0"
   }
 }
