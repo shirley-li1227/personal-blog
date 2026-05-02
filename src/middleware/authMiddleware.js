@@ -1,4 +1,5 @@
 const jwt = require("jsonwebtoken");
+const { getJwtSecret } = require("../config/db");
 
 function decodeTokenFromHeader(authHeader) {
   const [scheme, token] = (authHeader || "").split(" ");
@@ -6,7 +7,7 @@ function decodeTokenFromHeader(authHeader) {
     return null;
   }
 
-  const jwtSecret = process.env.JWT_SECRET;
+  const jwtSecret = getJwtSecret();
   if (!jwtSecret) {
     return null;
   }

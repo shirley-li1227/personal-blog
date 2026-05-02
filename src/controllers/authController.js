@@ -6,13 +6,13 @@ const {
   createUser,
   findUserById,
 } = require("../models/userModel");
+const { getJwtSecret, getJwtExpiresIn } = require("../config/db");
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const USERNAME_MIN_LENGTH = 3;
 const USERNAME_MAX_LENGTH = 20;
 const PASSWORD_MIN_LENGTH = 6;
 const SALT_ROUNDS = 10;
-const TOKEN_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "7d";
 
 function validateRegisterInput({ username, email, password }) {
   if (
@@ -107,7 +107,7 @@ async function login(req, res, next) {
       return res.status(401).json({ message: "用户名或密码错误" });
     }
 
-    const jwtSecret = process.env.JWT_SECRET;
+    const jwtSecret = getJwtSecret();
     if (!jwtSecret) {
       return res.status(500).json({ message: "JWT 配置缺失" });
     }
@@ -118,7 +118,7 @@ async function login(req, res, next) {
         username: user.username,
       },
       jwtSecret,
-      { expiresIn: TOKEN_EXPIRES_IN }
+      { expiresIn: getJwtExpiresIn() }
     );
 
     const userInfo = await findUserById(user.id);

@@ -1,13 +1,11 @@
-# Cloudflare Pages：frontend/dist + Pages Functions；数据库 D1（SQLite）
-# 将 REPLACE_WITH_D1_DATABASE_ID 换成：wrangler d1 create personal-blog-db 输出里的 database_id
+# Workers + 静态资源（frontend/dist），Express /api 使用 Node HTTP 桥接（handleAsNodeRequest）
+# CLI：npm run deploy
 #
-# 远程执行迁移：
-#   npx wrangler d1 execute personal-blog-db --remote --file=migrations/0001_init.sql
-# 本地 wrangler 预览：
-#   npx wrangler d1 execute personal-blog-db --local --file=migrations/0001_init.sql
+# D1 迁移：
+#   npm run d1:migrate:remote
 
 name = "personal-blog"
-pages_build_output_dir = "frontend/dist"
+main = "src/worker.mjs"
 compatibility_date = "2025-11-01"
 
 compatibility_flags = [
@@ -19,4 +17,16 @@ compatibility_flags = [
 [[d1_databases]]
 binding = "DB"
 database_name = "personal-blog-db"
-database_id = "1b880730-f920-414c-a54a-851da0020ac"
+database_id = "1b880730-f920-414c-a54a-851da0020ac1"
+
+# JWT_SECRET 必须用 Secret，勿写进仓库。首次或轮换后执行：
+#   npx wrangler secret put JWT_SECRET
+
+[vars]
+JWT_EXPIRES_IN = "7d"
+
+[assets]
+directory = "frontend/dist"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
+run_worker_first = [ "/api/*" ]

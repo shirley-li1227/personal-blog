@@ -11,8 +11,9 @@
     "d1:migrate:remote": "wrangler d1 execute personal-blog-db --remote --file=migrations/0001_init.sql",
     "test": "echo \"No tests configured\"",
     "build:frontend": "npm run build --prefix frontend",
-    "pages:deploy": "npm run build:frontend && wrangler pages deploy frontend/dist --project-name=personal-blog",
-    "pages:dev": "npm run build:frontend && wrangler pages dev frontend/dist --project-name=personal-blog"
+    "deploy": "npm run build:frontend && wrangler deploy",
+    "pages:deploy": "npm run deploy",
+    "pages:dev": "npm run build:frontend && wrangler dev"
   },
   "keywords": [],
   "author": "",
