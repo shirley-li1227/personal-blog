@@ -7,6 +7,8 @@
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
     "db:init": "node scripts/init-db.js",
+    "d1:migrate:local": "wrangler d1 execute personal-blog-db --local --file=migrations/0001_init.sql",
+    "d1:migrate:remote": "wrangler d1 execute personal-blog-db --remote --file=migrations/0001_init.sql",
     "test": "echo \"No tests configured\"",
     "build:frontend": "npm run build --prefix frontend",
     "pages:deploy": "npm run build:frontend && wrangler pages deploy frontend/dist --project-name=personal-blog",
@@ -22,7 +24,7 @@
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "jsonwebtoken": "^9.0.3",
-    "mysql2": "^3.22.2"
+    "better-sqlite3": "^11.10.0"
   },
   "devDependencies": {
     "wrangler": "^4.44.0"

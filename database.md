@@ -1,5 +1,8 @@
 # 问答社区数据库设计
 
+（物理表结构以仓库内 `migrations/0001_init.sql` 为准，以下为字段说明。）
+
+
 ## 用户表（users）
 - id、username、email、password、avatar
 - created_at

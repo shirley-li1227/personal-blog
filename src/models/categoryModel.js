@@ -1,18 +1,14 @@
-const { pool } = require("../config/db");
+const { dbGet, dbRun } = require("../config/db");
 
 async function findCategoryByName(name) {
-  const [rows] = await pool.execute(
-    "SELECT id, name, description FROM categories WHERE name = ? LIMIT 1",
-    [name]
-  );
-  return rows[0] || null;
+  return dbGet("SELECT id, name, description FROM categories WHERE name = ? LIMIT 1", [name]);
 }
 
 async function createCategory(name) {
-  const [result] = await pool.execute(
-    "INSERT INTO categories (name, description) VALUES (?, ?)",
-    [name, null]
-  );
+  const result = await dbRun("INSERT INTO categories (name, description) VALUES (?, ?)", [
+    name,
+    null,
+  ]);
   return result.insertId;
 }
 

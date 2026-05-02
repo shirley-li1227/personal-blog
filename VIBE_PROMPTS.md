@@ -1,5 +1,5 @@
 请创建一个 Node.js + Express 后端项目：
-1. 初始化项目，安装 express、mysql2、jsonwebtoken、bcrypt 等依赖
+1. 初始化项目，安装 express、wrangler（Pages）、better-sqlite3（本地）、jsonwebtoken、bcryptjs 等依赖；数据库使用 Cloudflare D1（SQLite）
 2. 创建基本的项目结构：src/routes（路由）、src/controllers（控制器）、src/models（数据模型）、src/middleware（中间件）、src/config（配置）
 3. 配置数据库连接
 

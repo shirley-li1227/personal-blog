@@ -1,60 +1,4 @@
-const { pool } = require("../config/db");
-
-let schemaReadyPromise;
-
-async function ensurePostFeatureSchema() {
-  if (!schemaReadyPromise) {
-    schemaReadyPromise = (async () => {
-      const [statusColumn] = await pool.execute(
-        `SELECT COUNT(*) AS count
-           FROM information_schema.COLUMNS
-          WHERE TABLE_SCHEMA = DATABASE()
-            AND TABLE_NAME = 'articles'
-            AND COLUMN_NAME = 'status'`
-      );
-
-      if (!statusColumn[0].count) {
-        await pool.execute(
-          "ALTER TABLE articles ADD COLUMN status VARCHAR(20) NOT NULL DEFAULT 'draft' AFTER views"
-        );
-      }
-
-      await pool.execute(
-        `CREATE TABLE IF NOT EXISTS article_likes (
-          article_id BIGINT UNSIGNED NOT NULL,
-          user_id BIGINT UNSIGNED NOT NULL,
-          created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-          PRIMARY KEY (article_id, user_id),
-          KEY idx_article_likes_user_id (user_id),
-          CONSTRAINT fk_article_likes_article
-            FOREIGN KEY (article_id) REFERENCES articles (id)
-            ON DELETE CASCADE ON UPDATE CASCADE,
-          CONSTRAINT fk_article_likes_user
-            FOREIGN KEY (user_id) REFERENCES users (id)
-            ON DELETE CASCADE ON UPDATE CASCADE
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`
-      );
-
-      await pool.execute(
-        `CREATE TABLE IF NOT EXISTS article_favorites (
-          article_id BIGINT UNSIGNED NOT NULL,
-          user_id BIGINT UNSIGNED NOT NULL,
-          created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-          PRIMARY KEY (article_id, user_id),
-          KEY idx_article_favorites_user_id (user_id),
-          CONSTRAINT fk_article_favorites_article
-            FOREIGN KEY (article_id) REFERENCES articles (id)
-            ON DELETE CASCADE ON UPDATE CASCADE,
-          CONSTRAINT fk_article_favorites_user
-            FOREIGN KEY (user_id) REFERENCES users (id)
-            ON DELETE CASCADE ON UPDATE CASCADE
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`
-      );
-    })();
-  }
-
-  await schemaReadyPromise;
-}
+const { dbAll, dbGet, dbRun } = require("../config/db");
 
 function mapPostRow(row) {
   let parsedTags = [];
@@ -96,8 +40,7 @@ function mapPostRow(row) {
 }
 
 async function createPost({ title, content, categoryId, tags, cover, authorId }) {
-  await ensurePostFeatureSchema();
-  const [result] = await pool.execute(
+  const result = await dbRun(
     `INSERT INTO articles (title, content, category_id, tags, cover, author_id, status)
      VALUES (?, ?, ?, ?, ?, ?, 'draft')`,
     [title, content, categoryId, JSON.stringify(tags), cover, authorId]
@@ -107,8 +50,7 @@ async function createPost({ title, content, categoryId, tags, cover, authorId })
 }
 
 async function getPostById(postId, userId = 0) {
-  await ensurePostFeatureSchema();
-  const [rows] = await pool.execute(
+  const row = await dbGet(
     `SELECT a.id, a.title, a.content, a.cover, a.category_id, a.tags, a.author_id,
             a.views, a.status, a.created_at, a.updated_at, c.name AS category_name,
             u.username AS author_username,
@@ -124,20 +66,18 @@ async function getPostById(postId, userId = 0) {
     [userId || 0, userId || 0, postId]
   );
 
-  if (!rows[0]) {
+  if (!row) {
     return null;
   }
 
-  return mapPostRow(rows[0]);
+  return mapPostRow(row);
 }
 
 async function increasePostViews(postId) {
-  await ensurePostFeatureSchema();
-  await pool.execute("UPDATE articles SET views = views + 1 WHERE id = ?", [postId]);
+  await dbRun("UPDATE articles SET views = views + 1 WHERE id = ?", [postId]);
 }
 
 async function listPosts({ offset, pageSize, category, keyword, userId = 0 }) {
-  await ensurePostFeatureSchema();
   const whereClauses = [];
   const params = [];
 
@@ -155,7 +95,7 @@ async function listPosts({ offset, pageSize, category, keyword, userId = 0 }) {
 
   const whereSql = whereClauses.length ? `WHERE ${whereClauses.join(" AND ")}` : "";
 
-  const [countRows] = await pool.execute(
+  const countRows = await dbAll(
     `SELECT COUNT(*) AS total
        FROM articles a
        LEFT JOIN categories c ON c.id = a.category_id
@@ -166,7 +106,9 @@ async function listPosts({ offset, pageSize, category, keyword, userId = 0 }) {
   const safePageSize = Number.isInteger(pageSize) && pageSize > 0 ? pageSize : 10;
   const safeOffset = Number.isInteger(offset) && offset >= 0 ? offset : 0;
 
-  const [rows] = await pool.query(
+  const total = Number(countRows[0]?.total ?? 0);
+
+  const rows = await dbAll(
     `SELECT a.id, a.title, a.content, a.cover, a.category_id, a.tags, a.author_id,
             a.views, a.status, a.created_at, a.updated_at, c.name AS category_name,
             u.username AS author_username,
@@ -179,18 +121,17 @@ async function listPosts({ offset, pageSize, category, keyword, userId = 0 }) {
        INNER JOIN users u ON u.id = a.author_id
       ${whereSql}
       ORDER BY a.created_at DESC
-      LIMIT ${safePageSize} OFFSET ${safeOffset}`,
-    [userId || 0, userId || 0, ...params]
+      LIMIT ? OFFSET ?`,
+    [userId || 0, userId || 0, ...params, safePageSize, safeOffset]
   );
 
   return {
-    total: countRows[0].total,
+    total,
     list: rows.map(mapPostRow),
   };
 }
 
 async function updatePostById(postId, fields) {
-  await ensurePostFeatureSchema();
   const entries = Object.entries(fields).filter(([, value]) => value !== undefined);
   if (!entries.length) {
     return 0;
@@ -199,8 +140,8 @@ async function updatePostById(postId, fields) {
   const setSql = entries.map(([key]) => `${key} = ?`).join(", ");
   const values = entries.map(([, value]) => value);
 
-  const [result] = await pool.execute(
-    `UPDATE articles SET ${setSql} WHERE id = ?`,
+  const result = await dbRun(
+    `UPDATE articles SET ${setSql}, updated_at = datetime('now') WHERE id = ?`,
     [...values, postId]
   );
 
@@ -208,55 +149,45 @@ async function updatePostById(postId, fields) {
 }
 
 async function deletePostById(postId) {
-  await ensurePostFeatureSchema();
-  const [result] = await pool.execute("DELETE FROM articles WHERE id = ?", [postId]);
+  const result = await dbRun("DELETE FROM articles WHERE id = ?", [postId]);
   return result.affectedRows;
 }
 
 async function updatePostStatus(postId, status) {
-  await ensurePostFeatureSchema();
-  const [result] = await pool.execute("UPDATE articles SET status = ? WHERE id = ?", [
-    status,
-    postId,
-  ]);
+  const result = await dbRun(
+    "UPDATE articles SET status = ?, updated_at = datetime('now') WHERE id = ?",
+    [status, postId]
+  );
   return result.affectedRows;
 }
 
 async function likePost(postId, userId) {
-  await ensurePostFeatureSchema();
-  await pool.execute(
-    "INSERT IGNORE INTO article_likes (article_id, user_id) VALUES (?, ?)",
-    [postId, userId]
-  );
-}
-
-async function unlikePost(postId, userId) {
-  await ensurePostFeatureSchema();
-  await pool.execute("DELETE FROM article_likes WHERE article_id = ? AND user_id = ?", [
+  await dbRun("INSERT OR IGNORE INTO article_likes (article_id, user_id) VALUES (?, ?)", [
     postId,
     userId,
   ]);
 }
 
+async function unlikePost(postId, userId) {
+  await dbRun("DELETE FROM article_likes WHERE article_id = ? AND user_id = ?", [postId, userId]);
+}
+
 async function favoritePost(postId, userId) {
-  await ensurePostFeatureSchema();
-  await pool.execute(
-    "INSERT IGNORE INTO article_favorites (article_id, user_id) VALUES (?, ?)",
-    [postId, userId]
-  );
+  await dbRun("INSERT OR IGNORE INTO article_favorites (article_id, user_id) VALUES (?, ?)", [
+    postId,
+    userId,
+  ]);
 }
 
 async function unfavoritePost(postId, userId) {
-  await ensurePostFeatureSchema();
-  await pool.execute(
-    "DELETE FROM article_favorites WHERE article_id = ? AND user_id = ?",
-    [postId, userId]
-  );
+  await dbRun("DELETE FROM article_favorites WHERE article_id = ? AND user_id = ?", [
+    postId,
+    userId,
+  ]);
 }
 
 async function listFavoritePosts(userId) {
-  await ensurePostFeatureSchema();
-  const [rows] = await pool.execute(
+  const rows = await dbAll(
     `SELECT a.id, a.title, a.content, a.cover, a.category_id, a.tags, a.author_id,
             a.views, a.status, a.created_at, a.updated_at, c.name AS category_name,
             u.username AS author_username,
@@ -277,8 +208,7 @@ async function listFavoritePosts(userId) {
 }
 
 async function listMyPublishedPosts(userId) {
-  await ensurePostFeatureSchema();
-  const [rows] = await pool.execute(
+  const rows = await dbAll(
     `SELECT a.id, a.title, a.content, a.cover, a.category_id, a.tags, a.author_id,
             a.views, a.status, a.created_at, a.updated_at, c.name AS category_name,
             u.username AS author_username,
@@ -298,8 +228,7 @@ async function listMyPublishedPosts(userId) {
 }
 
 async function listMyLikedPosts(userId) {
-  await ensurePostFeatureSchema();
-  const [rows] = await pool.execute(
+  const rows = await dbAll(
     `SELECT a.id, a.title, a.content, a.cover, a.category_id, a.tags, a.author_id,
             a.views, a.status, a.created_at, a.updated_at, c.name AS category_name,
             u.username AS author_username,
