@@ -8,7 +8,9 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     if (url.pathname.startsWith("/api")) {
-      return runWithWorkerEnv(env, () => handleAsNodeRequest(3000, request));
+      return runWithWorkerEnv(env, async () => {
+        return await handleAsNodeRequest(3000, request);
+      });
     }
     return env.ASSETS.fetch(request);
   },

@@ -25,8 +25,9 @@ function runWithWorkerEnv(env, fn) {
 
 function getJwtSecret() {
   const env = getWorkerBindings();
-  if (env && typeof env.JWT_SECRET === "string" && env.JWT_SECRET.length > 0) {
-    return env.JWT_SECRET;
+  const fromBindings = env?.JWT_SECRET;
+  if (fromBindings != null && String(fromBindings).length > 0) {
+    return String(fromBindings);
   }
   return process.env.JWT_SECRET;
 }
